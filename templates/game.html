@@ -1,0 +1,857 @@
+{% extends "base.html" %}
+{% block title %}Mission Control — Hunt the Hint{% endblock %}
+
+{% block nav_right %}
+<span class="tag tag-gold mono">{{ team_name }}</span>
+<a href="/leaderboard" class="btn btn-outline" target="_blank">Leaderboard</a>
+{% endblock %}
+
+{% block extra_style %}
+.game-wrap { max-width:860px; margin:0 auto; padding:24px 20px; }
+
+/* ── Status bar ── */
+.status-bar { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:20px; }
+.status-card { background:rgba(0,0,0,0.4); border:1px solid var(--border); border-radius:5px; padding:10px 14px; }
+.status-lbl { font-family:'Orbitron',sans-serif; font-size:0.55rem; letter-spacing:0.2em; color:rgba(200,214,229,0.4); margin-bottom:4px; }
+.status-val { font-family:'Share Tech Mono',monospace; font-size:0.95rem; color:white; }
+
+/* ── Timer ── */
+.timer-bar { background:rgba(0,0,0,0.5); border:1px solid var(--border); border-radius:5px;
+  padding:14px 20px; margin-bottom:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.timer-display { font-family:'Orbitron',sans-serif; font-size:2.2rem; font-weight:900;
+  color:var(--gold); text-shadow:var(--glow-gold); letter-spacing:0.05em; min-width:120px; }
+.timer-display.warning { color:var(--red); text-shadow:var(--glow-red); animation:pulse-num 0.5s ease-in-out infinite; }
+@keyframes pulse-num { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
+.timer-progress-wrap { flex:1; min-width:140px; }
+.timer-label { font-family:'Share Tech Mono',monospace; font-size:0.7rem; color:rgba(200,214,229,0.5); margin-bottom:6px; }
+.timer-track { height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; }
+.timer-fill { height:100%; background:var(--gold); border-radius:3px; transition:width 1s linear, background 0.5s; }
+.timer-fill.warning { background:var(--red); }
+
+/* ── Screens ── */
+#waiting-screen,#round-screen,#done-screen,#ended-screen,#frozen-screen { display:none; }
+#waiting-screen.active,#round-screen.active,#done-screen.active,
+#ended-screen.active,#frozen-screen.active { display:block; }
+
+.waiting-anim { text-align:center; padding:80px 20px; }
+.pulse-ring { width:100px;height:100px;border-radius:50%;border:2px solid var(--red);
+  margin:0 auto 24px;display:flex;align-items:center;justify-content:center;
+  font-size:2.5rem;animation:pulse-border 1.5s ease-in-out infinite;box-shadow:var(--glow-red); }
+.waiting-text { font-family:'Orbitron',sans-serif;font-size:1.1rem;color:var(--gold);letter-spacing:0.2em;margin-bottom:12px; }
+.waiting-sub { font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:rgba(200,214,229,0.5); }
+.blink { animation:blink 1s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+/* ── Questions ── */
+.question-block { background:var(--panel2);border:1px solid var(--border);
+  border-radius:6px;padding:20px;margin-bottom:14px;transition:border-color 0.2s; }
+.question-block:hover { border-color:rgba(0,180,216,0.4); }
+.question-block.answered { border-color:rgba(46,213,115,0.35); }
+.q-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
+.q-num { font-family:'Orbitron',sans-serif;font-size:0.65rem;letter-spacing:0.2em;color:var(--gold); }
+.q-dot { width:8px;height:8px;border-radius:50%;background:rgba(200,214,229,0.15);transition:background 0.2s; }
+.q-dot.filled { background:#2ed573;box-shadow:0 0 6px #2ed573; }
+.q-text { font-size:0.9rem;line-height:1.75;color:var(--text);margin-bottom:12px; }
+.q-hint { font-family:'Share Tech Mono',monospace;font-size:0.72rem;color:rgba(0,180,216,0.7);
+  margin-bottom:10px;padding:7px 12px;background:rgba(0,180,216,0.05);
+  border-left:2px solid var(--blue);border-radius:0 3px 3px 0; }
+
+/* ── Image ── */
+.q-image-wrap { position:relative;width:100%;margin-bottom:12px;
+  background:#050810;border:1px solid var(--border);border-radius:4px;
+  overflow:hidden;padding-top:56.25%; }
+.q-image-wrap .skeleton { position:absolute;inset:0;
+  background:linear-gradient(90deg,#0a1628 25%,#0d1f3c 50%,#0a1628 75%);
+  background-size:200% 100%;animation:shimmer 1.4s infinite; }
+@keyframes shimmer { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+.q-image { position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  opacity:0;transition:opacity 0.3s ease; }
+.q-image.loaded { opacity:1; }
+
+/* ── Answer input ── */
+.answer-row { display:flex;gap:10px;align-items:center; }
+.answer-input { flex:1;background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--text);
+  font-family:'Share Tech Mono',monospace;font-size:0.9rem;padding:9px 13px;border-radius:3px;transition:all 0.2s; }
+.answer-input:focus { outline:none;border-color:var(--blue);box-shadow:var(--glow-blue); }
+.answer-input:disabled { opacity:0.5;cursor:not-allowed; }
+.reveal-badge { font-family:'Orbitron',sans-serif;font-size:0.6rem;letter-spacing:0.1em;
+  padding:4px 10px;border-radius:2px;white-space:nowrap; }
+
+/* ── Submit bar ── */
+.submit-bar { display:flex;align-items:center;justify-content:space-between;
+  margin-top:20px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:12px; }
+.progress-text { font-family:'Share Tech Mono',monospace;font-size:0.82rem; }
+.draft-indicator { font-family:'Share Tech Mono',monospace;font-size:0.7rem;
+  color:rgba(200,214,229,0.35);margin-left:8px; }
+
+/* ── Done / frozen screens ── */
+.done-box { text-align:center;padding:50px 20px; }
+.done-score { font-family:'Orbitron',sans-serif;font-size:3rem;font-weight:900;
+  color:var(--gold);text-shadow:var(--glow-gold);margin:16px 0; }
+.result-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+  gap:8px;margin-top:18px;text-align:left; }
+.result-item { background:rgba(0,0,0,0.3);border-radius:4px;padding:10px 12px;
+  border-left:3px solid transparent;font-family:'Share Tech Mono',monospace;font-size:0.77rem; }
+.result-item.correct { border-color:#2ed573; }
+.result-item.wrong   { border-color:var(--red); }
+.frozen-box { text-align:center;padding:60px 20px; }
+.frozen-icon { font-size:3rem;margin-bottom:12px; }
+
+/* ── Toast ── */
+#notif { position:fixed;top:70px;left:50%;transform:translateX(-50%);
+  background:var(--panel2);border:1px solid var(--gold);color:var(--gold);
+  padding:10px 24px;border-radius:4px;font-family:'Orbitron',sans-serif;
+  font-size:0.7rem;letter-spacing:0.1em;opacity:0;transition:opacity 0.3s;
+  pointer-events:none;z-index:200;box-shadow:var(--glow-gold);white-space:nowrap; }
+{% endblock %}
+
+{% block content %}
+<div class="game-wrap">
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-card">
+      <div class="status-lbl">AGENT</div>
+      <div class="status-val" style="color:var(--gold);">{{ team_name }}</div>
+    </div>
+    <div class="status-card">
+      <div class="status-lbl">ROUND</div>
+      <div class="status-val" id="s-round">—</div>
+    </div>
+    <div class="status-card">
+      <div class="status-lbl">STATUS</div>
+      <div class="status-val" id="s-status">STANDBY</div>
+    </div>
+    <div class="status-card">
+      <div class="status-lbl">SCORE</div>
+      <div class="status-val" id="s-score">0 pts</div>
+    </div>
+    <div class="status-card">
+      <div class="status-lbl">ANSWERED</div>
+      <div class="status-val"><span id="answered-count">0</span>/<span id="total-count">0</span></div>
+    </div>
+  </div>
+
+  <!-- Timer -->
+  <div class="timer-bar" id="timer-bar" style="display:none;">
+    <div>
+      <div class="timer-label">TIME REMAINING</div>
+      <div class="timer-display" id="timer-display">00:00</div>
+    </div>
+    <div class="timer-progress-wrap">
+      <div class="timer-label" id="timer-sub">Round active</div>
+      <div class="timer-track">
+        <div class="timer-fill" id="timer-fill" style="width:100%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WAITING -->
+  <div id="waiting-screen" class="active">
+    <div class="waiting-anim">
+      <div class="pulse-ring">⚡</div>
+      <div class="waiting-text">AWAITING MISSION BRIEFING<span class="blink">_</span></div>
+      <div class="waiting-sub">Stand by for admin to initiate round protocols...</div>
+    </div>
+  </div>
+
+  <!-- ROUND ACTIVE -->
+  <div id="round-screen">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span id="round-badge" class="tag tag-red">ROUND 01</span>
+        <span id="round-title" style="font-family:'Orbitron',sans-serif;font-size:0.9rem;color:var(--gold);">TEXT HUNT</span>
+      </div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:0.75rem;color:rgba(200,214,229,0.4);" id="autosave-txt"></div>
+    </div>
+    <div id="questions-container"></div>
+    <div class="submit-bar">
+      <div class="progress-text">
+        Answered: <span id="answered-count2">0</span> / <span id="total-count2">0</span>
+        <span class="draft-indicator" id="draft-indicator"></span>
+      </div>
+      <button class="btn btn-gold" id="submit-btn" onclick="submitAnswers()">⚡ TRANSMIT ANSWERS</button>
+    </div>
+  </div>
+
+  <!-- FROZEN: time's up but not yet submitted -->
+  <div id="frozen-screen">
+    <!-- Already submitted -->
+    <div id="frozen-done-box" class="frozen-box card card-glow-red" style="display:none;">
+      <div class="frozen-icon">🔒</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:var(--red);letter-spacing:0.15em;">ROUND COMPLETE</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:0.85rem;color:rgba(200,214,229,0.5);margin-top:10px;" id="frozen-msg">
+        Your answers have been saved.
+      </div>
+      <div class="done-score" id="frozen-score">— PTS</div>
+    </div>
+    <!-- Not yet submitted: show questions + submit -->
+    <div id="frozen-submit-box" style="display:none;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <span class="tag tag-red" id="frozen-round-badge">ROUND 02</span>
+        <span style="font-family:'Orbitron',sans-serif;font-size:0.9rem;color:var(--red);">⏱ TIME'S UP — SUBMIT NOW</span>
+      </div>
+      <div style="background:rgba(230,57,70,0.07);border:1px solid rgba(230,57,70,0.3);border-radius:5px;
+                  padding:12px 16px;margin-bottom:16px;font-family:'Share Tech Mono',monospace;
+                  font-size:0.8rem;color:rgba(200,214,229,0.6);">
+        ⚠ Round ended. Answers preserved below — hit <strong style="color:var(--gold);">TRANSMIT</strong> to lock in your score.
+      </div>
+      <div id="frozen-questions-container"></div>
+      <div class="submit-bar" style="margin-top:16px;">
+        <div class="progress-text">
+          Answered: <span id="frozen-answered-count">0</span> / <span id="frozen-total-count">0</span>
+        </div>
+        <button class="btn btn-gold" id="frozen-submit-btn" onclick="submitFrozenAnswers()">⚡ TRANSMIT ANSWERS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMITTED -->
+  <div id="done-screen">
+    <div class="done-box card card-glow-gold">
+      <div class="tag tag-green">✓ SUBMITTED</div>
+      <div class="done-score" id="round-score">0 PTS</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:0.82rem;color:rgba(200,214,229,0.5);" id="done-msg"></div>
+      <div class="result-grid" id="result-grid"></div>
+    </div>
+  </div>
+
+  <!-- GAME ENDED -->
+  <div id="ended-screen">
+    <div class="done-box card card-glow-gold">
+      <div style="font-size:3rem;margin-bottom:12px;">🏆</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.4rem;color:var(--gold);letter-spacing:0.15em;">MISSION COMPLETE</div>
+      <div class="done-score" id="final-score">0 PTS</div>
+      <a href="/leaderboard" class="btn btn-gold" style="margin-top:20px;">VIEW FINAL RANKINGS</a>
+    </div>
+  </div>
+
+</div>
+<div id="notif"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/ws.js"></script>
+<script>
+const TEAM = {{ team_name | tojson }};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE STATE — reset completely when a new round starts
+// ─────────────────────────────────────────────────────────────────────────────
+let currentRound  = 0;   // 0=lobby 1=round1 2=round2 3=ended
+let renderedRound = 0;   // which round DOM is currently shown in #round-screen
+let answers       = {};  // { "0": "typed text", ... }
+let totalQs       = 0;
+let submitting    = false;   // ← CRITICAL: reset per round
+let alreadyDone   = false;   // ← CRITICAL: reset per round
+
+// Timer
+let timerDuration  = 0;
+let timerStartTime = null;
+let timerInterval  = null;
+
+// Draft autosave
+let draftInterval = null;
+let lastDraftKey  = '';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reset all per-round state. Called every time a new round is rendered.
+// ─────────────────────────────────────────────────────────────────────────────
+function resetRoundState() {
+  answers      = {};
+  totalQs      = 0;
+  submitting   = false;
+  alreadyDone  = false;
+  lastDraftKey = '';
+  stopDraftAutosave();
+  // Re-enable submit button in case it was disabled
+  const btn = document.getElementById('submit-btn');
+  if (btn) { btn.textContent = '⚡ TRANSMIT ANSWERS'; btn.disabled = false; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WebSocket
+// ─────────────────────────────────────────────────────────────────────────────
+const socket = new GameSocket(onWsMessage);
+socket.identify(TEAM);
+
+function onWsMessage(msg) {
+  if (msg.type !== 'game_event') return;
+  const e = msg.data;
+  switch (e.type) {
+    case 'round_started':
+      renderedRound = 0;  // force re-render on next fetchStatus
+      if (e.duration && e.start_time) startTimerFrom(e.duration, e.start_time);
+      fetchStatus();
+      break;
+    case 'round_ended':
+      stopTimer();
+      fetchStatus();
+      break;
+    case 'game_ended':
+      stopTimer();
+      fetchStatus();
+      break;
+    case 'game_reset':
+      location.href = '/register';
+      break;
+    case 'answers_revealed':
+      showRevealedAnswers(e.answers, e.round);
+      break;
+    case 'time_added':
+      if (e.duration && e.start_time) startTimerFrom(e.duration, e.start_time);
+      notify('⏱ +60 seconds added!');
+      break;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fetch status from server and update UI
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchStatus() {
+  try {
+    const res = await fetch('/game/status');
+    if (res.status === 401) { location.href = '/register'; return; }
+    if (!res.ok) return;
+    const d = await res.json();
+    updateUI(d);
+  } catch (err) {
+    console.error('fetchStatus error', err);
+  }
+}
+
+function updateUI(d) {
+  const rn         = d.current_round;
+  const active     = d.round_active;
+  const td         = d.team_data || {};
+  const questions  = d.questions || [];
+  const draft      = d.draft     || {};
+
+  currentRound = rn;
+  document.getElementById('s-round').textContent = rn || '—';
+  document.getElementById('s-score').textContent = (td.score || 0) + ' pts';
+
+  // ── GAME ENDED ────────────────────────────────────────────────────────────
+  if (rn === 3) {
+    stopTimer(); stopDraftAutosave();
+    showScreen('ended');
+    document.getElementById('final-score').textContent = (td.score || 0) + ' PTS';
+    return;
+  }
+
+  // ── LOBBY ─────────────────────────────────────────────────────────────────
+  if (rn === 0) {
+    stopTimer();
+    document.getElementById('s-status').textContent = 'STANDBY';
+    showScreen('waiting');
+    renderedRound = 0;
+    return;
+  }
+
+  // ── SYNC TIMER if active ──────────────────────────────────────────────────
+  if (active && d.timer && d.timer.start_time && !timerStartTime) {
+    startTimerFrom(d.timer.duration, d.timer.start_time);
+  }
+  if (!active) stopTimer();
+
+  // ── ROUND 1 ───────────────────────────────────────────────────────────────
+  if (rn === 1) {
+    document.getElementById('s-status').textContent = active ? 'ROUND 1 ACTIVE' : 'ROUND 1 ENDED';
+    if (td.round1_done) {
+      // Already submitted round 1
+      showSubmittedScreen(td, 1);
+    } else if (!active) {
+      // Round 1 ended, not submitted — show frozen submit screen
+      showFrozenSubmit(1, questions, draft);
+    } else {
+      // Round 1 active, not submitted — show questions
+      if (renderedRound !== 1) showRound(1, questions, draft);
+    }
+    return;
+  }
+
+  // ── ROUND 2 ───────────────────────────────────────────────────────────────
+  if (rn === 2) {
+    document.getElementById('s-status').textContent = active ? 'ROUND 2 ACTIVE' : 'ROUND 2 ENDED';
+    if (td.round2_done) {
+      // Already submitted round 2
+      showSubmittedScreen(td, 2);
+    } else if (!active) {
+      // Round 2 ended, not submitted — show frozen submit screen
+      showFrozenSubmit(2, questions, draft);
+    } else {
+      // Round 2 active, not submitted — show questions
+      if (renderedRound !== 2) showRound(2, questions, draft);
+    }
+    return;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function showScreen(name) {
+  ['waiting','round','done','ended','frozen'].forEach(s => {
+    document.getElementById(s + '-screen').classList.remove('active');
+  });
+  document.getElementById(name + '-screen').classList.add('active');
+}
+
+// Show the "you already submitted" screen
+function showSubmittedScreen(td, rn) {
+  showScreen('done');
+  const sc = td[`round${rn}_score`] || 0;
+  document.getElementById('round-score').textContent = sc + ' PTS';
+  document.getElementById('done-msg').textContent =
+    rn === 1 ? '✓ Round 1 done. Standby for Round 2...' : '✓ All rounds complete!';
+  document.getElementById('result-grid').innerHTML = '';
+}
+
+// Show frozen screen — already submitted variant
+function showFrozenDone(td, rn) {
+  showScreen('frozen');
+  document.getElementById('frozen-done-box').style.display  = '';
+  document.getElementById('frozen-submit-box').style.display = 'none';
+  const sc = td[`round${rn}_score`] || 0;
+  document.getElementById('frozen-score').textContent = sc + ' PTS';
+  document.getElementById('frozen-msg').textContent =
+    `Round ${rn} complete. Your score: ${sc} pts.`;
+}
+
+// Show frozen screen — can still submit variant
+function showFrozenSubmit(rn, questions, draft) {
+  showScreen('frozen');
+  document.getElementById('frozen-done-box').style.display   = 'none';
+  document.getElementById('frozen-submit-box').style.display = '';
+  document.getElementById('frozen-round-badge').textContent  = `ROUND 0${rn}`;
+  renderFrozenQuestions(rn, questions, draft);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Render live round questions
+// ─────────────────────────────────────────────────────────────────────────────
+function showRound(round, questions, draft) {
+  // Reset ALL per-round state before rendering new round
+  resetRoundState();
+  renderedRound = round;
+
+  document.getElementById('round-badge').textContent  = `ROUND 0${round}`;
+  document.getElementById('round-title').textContent  = round === 1 ? 'TEXT HUNT' : 'IMAGE HUNT';
+  totalQs = questions.length;
+  document.getElementById('total-count').textContent  = totalQs;
+  document.getElementById('total-count2').textContent = totalQs;
+  document.getElementById('answered-count').textContent  = 0;
+  document.getElementById('answered-count2').textContent = 0;
+  document.getElementById('autosave-txt').textContent = '';
+  document.getElementById('draft-indicator').textContent = '';
+
+  // Preload images for round 2
+  if (round === 2) {
+    questions.forEach(q => { if (q.image_url) { const img = new Image(); img.src = q.image_url; } });
+  }
+
+  const container = document.getElementById('questions-container');
+  container.innerHTML = '';
+
+  questions.forEach((q, i) => {
+    const block = document.createElement('div');
+    block.className = 'question-block';
+    block.id = `qblock-${i}`;
+
+    const draftVal = draft[String(i)] || '';
+
+    let inner = `<div class="q-header">
+      <span class="q-num">SIGNAL-${String(i+1).padStart(2,'0')}</span>
+      <span class="q-dot" id="qdot-${i}"></span>
+    </div>`;
+
+    if (round === 1) {
+      inner += `<div class="q-text">${escHtml(q.text)}</div>`;
+      if (q.hint) inner += `<div class="q-hint">🔍 ${escHtml(q.hint)}</div>`;
+    } else {
+      inner += `<div class="q-image-wrap">
+        <div class="skeleton" id="skel-${i}"></div>
+        <img src="${escHtml(q.image_url)}" class="q-image" id="img-${i}"
+             alt="Image ${i+1}" loading="eager" decoding="async"
+             onload="imgLoaded(${i})" onerror="imgError(${i})">
+      </div>`;
+      if (q.hint) inner += `<div class="q-hint">🔍 ${escHtml(q.hint)}</div>`;
+    }
+
+    inner += `<div class="answer-row">
+      <input type="text" class="answer-input" id="ans-${i}"
+             value="${escHtml(draftVal)}"
+             placeholder="Type the hidden word..."
+             maxlength="50" autocomplete="off" spellcheck="false"
+             oninput="onAnswerChange(${i})"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ans-${i+1}')?.focus();}">
+      <span class="reveal-badge" id="reveal-${i}" style="display:none;"></span>
+    </div>`;
+
+    block.innerHTML = inner;
+    container.appendChild(block);
+
+    // Restore draft into local answers map
+    if (draftVal.trim()) {
+      answers[i] = draftVal;
+      document.getElementById(`qdot-${i}`)?.classList.add('filled');
+      block.classList.add('answered');
+    }
+  });
+
+  syncAnswerCount();
+  showScreen('round');
+  startDraftAutosave(round);
+}
+
+function imgLoaded(i) {
+  document.getElementById(`img-${i}`)?.classList.add('loaded');
+  const s = document.getElementById(`skel-${i}`);
+  if (s) s.style.display = 'none';
+}
+function imgError(i) {
+  const s = document.getElementById(`skel-${i}`);
+  if (s) { s.style.animation = 'none'; s.style.background = '#1a0a0a'; }
+  const img = document.getElementById(`img-${i}`);
+  if (img) { img.style.opacity = '1'; img.alt = '⚠ Image not found'; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Answer tracking (live round)
+// ─────────────────────────────────────────────────────────────────────────────
+function onAnswerChange(i) {
+  const val   = document.getElementById(`ans-${i}`)?.value || '';
+  const dot   = document.getElementById(`qdot-${i}`);
+  const block = document.getElementById(`qblock-${i}`);
+  if (val.trim()) {
+    answers[i] = val;
+    dot?.classList.add('filled');
+    block?.classList.add('answered');
+  } else {
+    delete answers[i];
+    dot?.classList.remove('filled');
+    block?.classList.remove('answered');
+  }
+  syncAnswerCount();
+}
+
+function syncAnswerCount() {
+  const n = Object.keys(answers).length;
+  document.getElementById('answered-count').textContent  = n;
+  document.getElementById('answered-count2').textContent = n;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Submit (live round)
+// ─────────────────────────────────────────────────────────────────────────────
+async function submitAnswers() {
+  if (submitting || alreadyDone) {
+    console.warn('submitAnswers blocked: submitting=', submitting, 'alreadyDone=', alreadyDone);
+    return;
+  }
+  const answered = Object.keys(answers).length;
+  if (answered < totalQs) {
+    if (!confirm(`You've answered ${answered}/${totalQs}. Submit anyway? Blanks = 0 pts.`)) return;
+  }
+
+  submitting = true;
+  const btn = document.getElementById('submit-btn');
+  if (btn) { btn.textContent = '⏳ TRANSMITTING...'; btn.disabled = true; }
+
+  // Build payload — keys are strings, values are trimmed lowercase
+  const payload = {};
+  for (let i = 0; i < totalQs; i++) {
+    payload[String(i)] = (answers[i] || '').trim().toLowerCase();
+  }
+
+  try {
+    const res = await fetch('/game/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ round: currentRound, answers: payload })
+    });
+    const d = await res.json();
+    if (d.ok) {
+      alreadyDone = true;
+      stopDraftAutosave();
+      document.getElementById('s-score').textContent = (d.total || 0) + ' pts';
+      // Show results on done-screen
+      showScreen('done');
+      document.getElementById('round-score').textContent = (d.score || 0) + ' PTS';
+      document.getElementById('done-msg').textContent =
+        currentRound === 1 ? '✓ Round 1 done. Standby for Round 2...' : '✓ All rounds complete!';
+      document.getElementById('result-grid').innerHTML = (d.results || []).map((r, i) =>
+        `<div class="result-item ${r.correct ? 'correct' : 'wrong'}">
+          <div style="font-size:0.6rem;color:rgba(200,214,229,0.35);margin-bottom:3px;">SIGNAL-${String(i+1).padStart(2,'0')}</div>
+          <div>${r.correct ? '✓ CORRECT' : '✗ ' + escHtml((r.answer||'').toUpperCase())}</div>
+        </div>`
+      ).join('');
+    } else {
+      // Server rejected — reset so they can try again
+      submitting = false;
+      if (btn) { btn.textContent = '⚡ TRANSMIT ANSWERS'; btn.disabled = false; }
+      notify(d.detail || 'Submit failed — try again');
+    }
+  } catch (err) {
+    submitting = false;
+    if (btn) { btn.textContent = '⚡ TRANSMIT ANSWERS'; btn.disabled = false; }
+    notify('Network error — try again');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Frozen screen render + submit
+// ─────────────────────────────────────────────────────────────────────────────
+// Store frozen state separately so it doesn't conflict with live-round state
+let frozenRound = 0;
+let frozenTotal = 0;
+let frozenAnswers = {};  // { "0": "typed", ... }
+let frozenSubmitting = false;
+
+function renderFrozenQuestions(round, questions, draft) {
+  frozenRound    = round;
+  frozenTotal    = questions.length;
+  frozenAnswers  = {};
+  frozenSubmitting = false;
+
+  const container = document.getElementById('frozen-questions-container');
+  container.innerHTML = '';
+  document.getElementById('frozen-total-count').textContent = frozenTotal;
+
+  let filledCount = 0;
+  questions.forEach((q, i) => {
+    const block = document.createElement('div');
+    block.className = 'question-block';
+
+    const draftVal = draft[String(i)] || '';
+    if (draftVal.trim()) {
+      frozenAnswers[i] = draftVal;
+      block.classList.add('answered');
+      filledCount++;
+    }
+
+    let inner = `<div class="q-header">
+      <span class="q-num">SIGNAL-${String(i+1).padStart(2,'0')}</span>
+      <span class="q-dot ${draftVal.trim() ? 'filled' : ''}" id="fdot-${i}"></span>
+    </div>`;
+
+    if (round === 1) {
+      inner += `<div class="q-text">${escHtml(q.text)}</div>`;
+      if (q.hint) inner += `<div class="q-hint">🔍 ${escHtml(q.hint)}</div>`;
+    } else {
+      inner += `<div class="q-image-wrap">
+        <div class="skeleton" id="fskel-${i}"></div>
+        <img src="${escHtml(q.image_url)}" class="q-image"
+             alt="Image ${i+1}" loading="eager" decoding="async"
+             onload="this.classList.add('loaded');const s=document.getElementById('fskel-${i}');if(s)s.style.display='none'">
+      </div>`;
+      if (q.hint) inner += `<div class="q-hint">🔍 ${escHtml(q.hint)}</div>`;
+    }
+
+    inner += `<div class="answer-row">
+      <input type="text" class="answer-input" id="fans-${i}"
+             value="${escHtml(draftVal)}"
+             placeholder="Type the hidden word..."
+             maxlength="50" autocomplete="off" spellcheck="false"
+             oninput="onFrozenChange(${i})"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('fans-${i+1}')?.focus();}">
+    </div>`;
+
+    block.innerHTML = inner;
+    container.appendChild(block);
+  });
+
+  document.getElementById('frozen-answered-count').textContent = filledCount;
+
+  // Re-enable frozen submit button
+  const fbtn = document.getElementById('frozen-submit-btn');
+  if (fbtn) { fbtn.textContent = '⚡ TRANSMIT ANSWERS'; fbtn.disabled = false; }
+}
+
+function onFrozenChange(i) {
+  const val   = document.getElementById(`fans-${i}`)?.value || '';
+  const dot   = document.getElementById(`fdot-${i}`);
+  const block = dot?.closest('.question-block');
+  if (val.trim()) {
+    frozenAnswers[i] = val;
+    dot?.classList.add('filled');
+    block?.classList.add('answered');
+  } else {
+    delete frozenAnswers[i];
+    dot?.classList.remove('filled');
+    block?.classList.remove('answered');
+  }
+  document.getElementById('frozen-answered-count').textContent =
+    Object.keys(frozenAnswers).length;
+}
+
+async function submitFrozenAnswers() {
+  if (frozenSubmitting) return;
+  const answered = Object.keys(frozenAnswers).length;
+  if (answered < frozenTotal) {
+    if (!confirm(`You've answered ${answered}/${frozenTotal}. Submit anyway? Blanks = 0 pts.`)) return;
+  }
+
+  frozenSubmitting = true;
+  const btn = document.getElementById('frozen-submit-btn');
+  if (btn) { btn.textContent = '⏳ TRANSMITTING...'; btn.disabled = true; }
+
+  const payload = {};
+  for (let i = 0; i < frozenTotal; i++) {
+    payload[String(i)] = (frozenAnswers[i] || '').trim().toLowerCase();
+  }
+
+  try {
+    const res = await fetch('/game/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ round: frozenRound, answers: payload })
+    });
+    const d = await res.json();
+    if (d.ok) {
+      document.getElementById('s-score').textContent = (d.total || 0) + ' pts';
+      // Show results on done-screen
+      showScreen('done');
+      document.getElementById('round-score').textContent = (d.score || 0) + ' PTS';
+      document.getElementById('done-msg').textContent =
+        frozenRound === 1 ? '✓ Round 1 done. Standby for Round 2...' : '✓ All rounds complete!';
+      document.getElementById('result-grid').innerHTML = (d.results || []).map((r, i) =>
+        `<div class="result-item ${r.correct ? 'correct' : 'wrong'}">
+          <div style="font-size:0.6rem;color:rgba(200,214,229,0.35);margin-bottom:3px;">SIGNAL-${String(i+1).padStart(2,'0')}</div>
+          <div>${r.correct ? '✓ CORRECT' : '✗ ' + escHtml((r.answer||'').toUpperCase())}</div>
+        </div>`
+      ).join('');
+    } else {
+      frozenSubmitting = false;
+      if (btn) { btn.textContent = '⚡ TRANSMIT ANSWERS'; btn.disabled = false; }
+      notify(d.detail || 'Submit failed — already scored or wrong round');
+    }
+  } catch (err) {
+    frozenSubmitting = false;
+    if (btn) { btn.textContent = '⚡ TRANSMIT ANSWERS'; btn.disabled = false; }
+    notify('Network error — try again');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reveal answers inline (only shows badges, never changes screen)
+// ─────────────────────────────────────────────────────────────────────────────
+function showRevealedAnswers(answerList, round) {
+  if (!answerList) return;
+  answerList.forEach(a => {
+    const badge = document.getElementById(`reveal-${a.id}`);
+    if (!badge) return;
+    const typed   = (answers[a.id] || '').trim().toLowerCase();
+    const correct = typed === (a.answer || '').toLowerCase();
+    badge.textContent = `ANS: ${(a.answer || '').toUpperCase()}`;
+    badge.style.cssText = `
+      display:inline-block; padding:4px 10px; border-radius:2px;
+      font-size:0.65rem; font-family:'Orbitron',sans-serif; letter-spacing:0.1em;
+      background:${correct ? 'rgba(46,213,115,0.2)' : 'rgba(230,57,70,0.2)'};
+      color:${correct ? '#2ed573' : 'var(--red)'};
+      border:1px solid ${correct ? 'rgba(46,213,115,0.4)' : 'rgba(230,57,70,0.4)'};`;
+  });
+  notify('✓ Answers revealed!');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timer
+// ─────────────────────────────────────────────────────────────────────────────
+function startTimerFrom(duration, startTimeSec) {
+  timerDuration  = duration;
+  timerStartTime = startTimeSec;
+  document.getElementById('timer-bar').style.display = 'flex';
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(tickTimer, 500);
+  tickTimer();
+}
+
+function tickTimer() {
+  if (!timerStartTime) return;
+  const elapsed   = (Date.now() / 1000) - timerStartTime;
+  const remaining = Math.max(0, timerDuration - elapsed);
+  const pct       = timerDuration > 0 ? (remaining / timerDuration) * 100 : 0;
+  const mins = Math.floor(remaining / 60);
+  const secs = Math.floor(remaining % 60);
+
+  const el   = document.getElementById('timer-display');
+  const fill = document.getElementById('timer-fill');
+  const sub  = document.getElementById('timer-sub');
+  if (el)   el.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  if (fill) fill.style.width = pct + '%';
+
+  const warn = remaining <= 60;
+  el?.classList.toggle('warning', warn);
+  fill?.classList.toggle('warning', warn);
+  if (sub) {
+    if (remaining <= 0)       sub.textContent = "TIME'S UP";
+    else if (remaining <= 30) sub.textContent = '⚠ SUBMIT NOW!';
+    else if (remaining <= 60) sub.textContent = 'LESS THAN 1 MIN!';
+    else                      sub.textContent = `Round ${currentRound || '—'} active`;
+  }
+  if (remaining <= 0) stopTimer();
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  timerStartTime = null;
+  document.getElementById('timer-bar').style.display = 'none';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Draft autosave
+// ─────────────────────────────────────────────────────────────────────────────
+function startDraftAutosave(round) {
+  stopDraftAutosave();
+  draftInterval = setInterval(() => saveDraft(round), 3000);
+}
+
+function stopDraftAutosave() {
+  if (draftInterval) { clearInterval(draftInterval); draftInterval = null; }
+}
+
+async function saveDraft(round) {
+  if (alreadyDone || submitting) return;
+  const payload = {};
+  for (let i = 0; i < totalQs; i++) {
+    payload[String(i)] = (answers[i] || '').trim().toLowerCase();
+  }
+  const key = JSON.stringify(payload);
+  if (key === lastDraftKey) return;
+  try {
+    await fetch('/game/draft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ round, answers: payload })
+    });
+    lastDraftKey = key;
+    const ind = document.getElementById('draft-indicator');
+    if (ind) { ind.textContent = '✓ saved'; setTimeout(() => ind.textContent = '', 1500); }
+  } catch (e) {}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Toast
+// ─────────────────────────────────────────────────────────────────────────────
+function notify(msg) {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.style.opacity = '1';
+  setTimeout(() => el.style.opacity = '0', 3000);
+}
+
+function escHtml(t) {
+  return String(t)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Boot
+// ─────────────────────────────────────────────────────────────────────────────
+setInterval(fetchStatus, 10000);
+fetchStatus();
+</script>
+{% endblock %}

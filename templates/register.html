@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Register — Hunt the Hint{% endblock %}
+
+{% block extra_style %}
+.register-wrap { min-height:calc(100vh - 60px); display:flex; align-items:center; justify-content:center; padding:40px 20px; }
+.register-box { width:100%; max-width:440px; }
+.ultron-icon { width:80px;height:80px;margin:0 auto 24px;border:2px solid var(--red);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:2rem;
+  box-shadow:var(--glow-red),inset 0 0 20px rgba(230,57,70,0.1);animation:pulse-border 2s ease-in-out infinite; }
+.event-badge { text-align:center;margin-bottom:32px; }
+.event-name { font-family:'Orbitron',sans-serif;font-size:0.65rem;letter-spacing:0.3em;color:var(--gold);text-transform:uppercase;margin-bottom:8px; }
+.game-title { font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:900;color:white;line-height:1.1; }
+.game-title .accent { color:var(--red); }
+.subtitle { font-size:0.85rem;color:rgba(200,214,229,0.6);margin-top:8px;font-family:'Share Tech Mono',monospace; }
+.form-label { font-family:'Orbitron',sans-serif;font-size:0.65rem;letter-spacing:0.15em;color:var(--blue);margin-bottom:8px;display:block; }
+.rounds-info { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px; }
+.round-card { background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;padding:14px;text-align:center; }
+.round-num { font-family:'Orbitron',sans-serif;font-size:0.6rem;letter-spacing:0.2em;color:var(--gold);margin-bottom:6px; }
+.round-desc { font-size:0.78rem;color:rgba(200,214,229,0.7); }
+{% endblock %}
+
+{% block content %}
+<div class="register-wrap">
+  <div class="register-box">
+    <div class="event-badge">
+      <div class="ultron-icon">⚡</div>
+      <div class="event-name">AI Odyssey — Technical Event</div>
+      <div class="game-title">HUNT<br><span class="accent">THE HINT</span></div>
+      <div class="subtitle">> INITIALIZING PROTOCOL... ENTER TEAM DESIGNATION</div>
+    </div>
+    <div class="card card-glow-red">
+      <div id="msg"></div>
+      <div style="margin-bottom:16px;">
+        <label class="form-label">Team Designation</label>
+        <input type="text" id="team_name" placeholder="Enter your team name..." maxlength="30" autocomplete="off" />
+      </div>
+      <button class="btn btn-red" style="width:100%;font-size:0.8rem;padding:12px;" onclick="register()">
+        ACCESS GRANTED — REGISTER
+      </button>
+      <div class="rounds-info">
+        <div class="round-card"><div class="round-num">ROUND 01</div><div class="round-desc">Text Hunt<br>Find hidden words in passages</div></div>
+        <div class="round-card"><div class="round-num">ROUND 02</div><div class="round-desc">Image Hunt<br>Decode words hidden in visuals</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('team_name').addEventListener('keydown', e => { if(e.key==='Enter') register(); });
+async function register() {
+  const name = document.getElementById('team_name').value.trim();
+  if (!name) { showMsg('error','Enter a team name'); return; }
+  const btn = document.querySelector('.btn-red');
+  btn.textContent = 'CONNECTING...'; btn.disabled = true;
+  try {
+    const res = await fetch('/register', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({team_name: name})
+    });
+    const d = await res.json();
+    if (d.ok) {
+      showMsg('success', `Welcome, ${name}! Redirecting...`);
+      setTimeout(() => window.location.href = '/game', 900);
+    } else {
+      showMsg('error', d.detail || 'Registration failed');
+      btn.textContent = 'ACCESS GRANTED — REGISTER'; btn.disabled = false;
+    }
+  } catch(e) {
+    showMsg('error','Connection error. Try again.');
+    btn.textContent = 'ACCESS GRANTED — REGISTER'; btn.disabled = false;
+  }
+}
+function showMsg(type, text) {
+  document.getElementById('msg').innerHTML =
+    `<div class="flash flash-${type==='error'?'error':'success'}">${text}</div>`;
+}
+</script>
+{% endblock %}

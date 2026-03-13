@@ -1,0 +1,530 @@
+{% extends "base.html" %}
+{% block title %}Admin — Hunt the Hint{% endblock %}
+
+{% block nav_right %}
+<span class="tag tag-red">ADMIN</span>
+<a href="/leaderboard" class="btn btn-outline" target="_blank">Leaderboard</a>
+<a href="/admin/logout" class="btn btn-ghost">Logout</a>
+{% endblock %}
+
+{% block extra_style %}
+.admin-wrap { max-width:1200px; margin:0 auto; padding:24px 20px; }
+.admin-grid { display:grid; grid-template-columns:320px 1fr; gap:18px; }
+@media(max-width:800px){ .admin-grid{grid-template-columns:1fr;} }
+
+/* Controls */
+.ctrl-btn { width:100%; padding:11px 14px; margin-bottom:8px; font-family:'Orbitron',sans-serif;
+  font-size:0.68rem; letter-spacing:0.08em; border:none; border-radius:4px;
+  cursor:pointer; transition:all 0.2s; text-align:left; display:flex; align-items:center; gap:8px; }
+.ctrl-btn:disabled { opacity:0.3; cursor:not-allowed; }
+.cb-green { background:rgba(46,213,115,0.12); color:#2ed573; border:1px solid rgba(46,213,115,0.35); }
+.cb-green:hover:not(:disabled) { background:rgba(46,213,115,0.22); }
+.cb-red   { background:rgba(230,57,70,0.12); color:var(--red); border:1px solid rgba(230,57,70,0.35); }
+.cb-red:hover:not(:disabled)   { background:rgba(230,57,70,0.22); }
+.cb-gold  { background:rgba(255,214,10,0.12); color:var(--gold); border:1px solid rgba(255,214,10,0.35); }
+.cb-gold:hover:not(:disabled)  { background:rgba(255,214,10,0.22); }
+.cb-blue  { background:rgba(0,180,216,0.12); color:var(--blue); border:1px solid rgba(0,180,216,0.35); }
+.cb-blue:hover:not(:disabled)  { background:rgba(0,180,216,0.22); }
+.cb-grey  { background:rgba(200,214,229,0.06); color:rgba(200,214,229,0.45); border:1px solid rgba(200,214,229,0.12); }
+.cb-grey:hover:not(:disabled)  { background:rgba(200,214,229,0.1); }
+
+.sec-lbl { font-family:'Orbitron',sans-serif; font-size:0.58rem; letter-spacing:0.2em;
+  color:rgba(200,214,229,0.35); margin:16px 0 8px; padding-bottom:5px; border-bottom:1px solid var(--border); }
+.stat-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px; }
+.stat-box { background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:4px; padding:10px; text-align:center; }
+.stat-val { font-family:'Orbitron',sans-serif; font-size:1.3rem; color:var(--gold); }
+.stat-lbl { font-size:0.58rem; color:rgba(200,214,229,0.4); margin-top:2px; font-family:'Share Tech Mono',monospace; }
+
+/* Timer setter */
+.timer-setter { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.timer-setter input { width:70px; background:rgba(0,0,0,0.4); border:1px solid var(--border);
+  color:var(--gold); font-family:'Orbitron',monospace; font-size:0.85rem; padding:7px 10px;
+  border-radius:3px; text-align:center; }
+.timer-setter input:focus { outline:none; border-color:var(--gold); }
+.timer-setter label { font-family:'Share Tech Mono',monospace; font-size:0.75rem; color:rgba(200,214,229,0.5); }
+
+/* Admin countdown */
+.admin-timer { font-family:'Orbitron',sans-serif; font-size:1.6rem; font-weight:900;
+  color:var(--gold); text-shadow:var(--glow-gold); text-align:center;
+  padding:10px; background:rgba(0,0,0,0.3); border-radius:4px; margin-bottom:8px; }
+.admin-timer.warning { color:var(--red); text-shadow:var(--glow-red); animation:pulse-n 0.5s infinite; }
+@keyframes pulse-n { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+.progress-track { height:5px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; margin-bottom:12px; }
+.progress-fill { height:100%; background:var(--gold); border-radius:3px; transition:width 1s linear, background 0.5s; }
+.progress-fill.warning { background:var(--red); }
+
+/* Team list */
+.team-row { display:flex; align-items:center; gap:8px; padding:7px 10px;
+  background:rgba(0,0,0,0.2); border-radius:3px; margin-bottom:5px;
+  font-family:'Share Tech Mono',monospace; font-size:0.78rem; }
+.team-name-cell { flex:1; }
+.team-score-cell { color:var(--gold); min-width:45px; text-align:right; }
+.team-badges { display:flex; gap:4px; }
+.sm-dot { width:7px; height:7px; border-radius:50%; }
+.dot-g  { background:#2ed573; box-shadow:0 0 4px #2ed573; }
+.dot-e  { background:rgba(200,214,229,0.15); }
+.del-btn { background:rgba(230,57,70,0.1); color:var(--red); border:1px solid rgba(230,57,70,0.3);
+  padding:2px 7px; border-radius:2px; cursor:pointer; font-size:0.65rem; transition:all 0.2s; flex-shrink:0; }
+.del-btn:hover { background:rgba(230,57,70,0.2); }
+.override-btn { background:rgba(0,180,216,0.1); color:var(--blue); border:1px solid rgba(0,180,216,0.3);
+  padding:2px 7px; border-radius:2px; cursor:pointer; font-size:0.65rem; transition:all 0.2s; flex-shrink:0; }
+.override-btn:hover { background:rgba(0,180,216,0.2); }
+
+/* Right panel */
+.right-panel { display:flex; flex-direction:column; gap:18px; }
+.tabs { display:flex; gap:2px; margin-bottom:14px; }
+.tab-btn { font-family:'Orbitron',sans-serif; font-size:0.62rem; letter-spacing:0.1em; padding:8px 18px;
+  background:rgba(0,0,0,0.3); color:rgba(200,214,229,0.4); border:1px solid var(--border);
+  border-radius:3px; cursor:pointer; transition:all 0.2s; }
+.tab-btn.active { background:rgba(0,180,216,0.12); color:var(--blue); border-color:var(--blue); }
+.q-item { background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:4px; padding:12px; margin-bottom:10px; }
+.q-item-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.q-field { margin-bottom:7px; }
+.q-field label { font-family:'Orbitron',sans-serif; font-size:0.58rem; letter-spacing:0.1em; color:var(--blue); display:block; margin-bottom:3px; }
+.q-inp { width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--border); color:var(--text);
+  font-family:'Share Tech Mono',monospace; font-size:0.82rem; padding:7px 10px; border-radius:3px; }
+.q-inp:focus { outline:none; border-color:var(--blue); }
+.q-ta { width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--border); color:var(--text);
+  font-family:'Share Tech Mono',monospace; font-size:0.82rem; padding:7px 10px; border-radius:3px;
+  resize:vertical; min-height:65px; }
+.q-ta:focus { outline:none; border-color:var(--blue); }
+
+/* Leaderboard table in admin */
+.lb-mini { width:100%; border-collapse:collapse; font-family:'Share Tech Mono',monospace; font-size:0.78rem; }
+.lb-mini th { font-family:'Orbitron',sans-serif; font-size:0.55rem; letter-spacing:0.15em;
+  color:rgba(200,214,229,0.35); padding:6px 10px; text-align:left; border-bottom:1px solid var(--border); }
+.lb-mini td { padding:8px 10px; border-bottom:1px solid rgba(26,58,110,0.3); }
+.lb-mini tr:hover td { background:rgba(0,180,216,0.03); }
+
+/* Toast */
+#toast { position:fixed; bottom:20px; right:20px; background:var(--panel2); border:1px solid var(--blue);
+  color:var(--blue); padding:9px 18px; border-radius:4px; font-family:'Share Tech Mono',monospace;
+  font-size:0.78rem; opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:999; }
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrap">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+    <h2 style="font-family:'Orbitron',sans-serif;font-size:1rem;letter-spacing:0.1em;color:var(--gold);">COMMAND CENTER</h2>
+    <span class="tag" id="game-badge" style="background:rgba(255,214,10,0.15);color:var(--gold);border:1px solid rgba(255,214,10,0.35);">STANDBY</span>
+  </div>
+
+  <div class="admin-grid">
+
+    <!-- LEFT PANEL -->
+    <div>
+      <div class="card" style="padding:18px;">
+
+        <div class="stat-row">
+          <div class="stat-box"><div class="stat-val" id="st-teams">0</div><div class="stat-lbl">TEAMS</div></div>
+          <div class="stat-box"><div class="stat-val" id="st-round">—</div><div class="stat-lbl">ROUND</div></div>
+          <div class="stat-box"><div class="stat-val" id="st-submitted">0</div><div class="stat-lbl">SUBMITTED</div></div>
+        </div>
+
+        <!-- Admin timer display -->
+        <div id="admin-timer-wrap" style="display:none;">
+          <div class="admin-timer" id="admin-timer">00:00</div>
+          <div class="progress-track"><div class="progress-fill" id="admin-fill" style="width:100%"></div></div>
+        </div>
+
+        <div class="sec-lbl">ROUND DURATION</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:rgba(200,214,229,0.4);margin-bottom:4px;">ROUND 1 (min)</div>
+            <input type="number" id="dur-r1" value="5" min="1" max="60" style="width:100%;background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--gold);font-family:'Orbitron',monospace;font-size:0.9rem;padding:7px 10px;border-radius:3px;text-align:center;">
+          </div>
+          <div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:rgba(200,214,229,0.4);margin-bottom:4px;">ROUND 2 (min)</div>
+            <input type="number" id="dur-r2" value="5" min="1" max="60" style="width:100%;background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--gold);font-family:'Orbitron',monospace;font-size:0.9rem;padding:7px 10px;border-radius:3px;text-align:center;">
+          </div>
+        </div>
+
+        <div class="sec-lbl">GAME FLOW</div>
+        <button class="ctrl-btn cb-green" onclick="control('start_round1')">▶ START ROUND 1 — Text Hunt</button>
+        <button class="ctrl-btn cb-gold"  onclick="control('start_round2')">▶ START ROUND 2 — Image Hunt</button>
+        <button class="ctrl-btn cb-blue"  onclick="control('add_time')">⏱ +60 SEC TO TIMER</button>
+        <button class="ctrl-btn cb-red"   onclick="control('end_round')">⏹ END ROUND + AUTO-FREEZE</button>
+        <button class="ctrl-btn cb-blue"  onclick="control('reveal_answers')" id="reveal-btn">🔍 REVEAL ANSWERS (current round)</button>
+        <button class="ctrl-btn cb-gold"  onclick="control('end_game')">🏆 END GAME</button>
+
+        <div class="sec-lbl">DANGER</div>
+        <button class="ctrl-btn cb-grey"  onclick="if(confirm('Reset ALL game data?'))control('reset_game')">↺ FULL RESET</button>
+      </div>
+
+      <!-- Teams list -->
+      <div class="card" style="padding:18px;margin-top:14px;max-height:420px;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="sec-lbl" style="margin:0;">TEAMS</div>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:0.7rem;color:rgba(200,214,229,0.35);">🟢R1 🟢R2</span>
+        </div>
+        <div id="teams-list"><div style="font-family:'Share Tech Mono',monospace;font-size:0.78rem;color:rgba(200,214,229,0.25);">No teams yet</div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <!-- Mini Leaderboard -->
+      <div class="card" style="padding:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h3 style="font-family:'Orbitron',sans-serif;font-size:0.8rem;color:var(--gold);letter-spacing:0.1em;">LIVE RANKINGS</h3>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:rgba(200,214,229,0.3);">score + submit time tiebreak</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="lb-mini">
+            <thead><tr>
+              <th>#</th><th>TEAM</th><th>R1</th><th>R2</th><th>TOTAL</th><th>TIME</th>
+            </tr></thead>
+            <tbody id="admin-lb-body"><tr><td colspan="6" style="color:rgba(200,214,229,0.25);padding:20px;text-align:center;">No teams</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Question Editor -->
+      <div class="card" style="padding:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+          <h3 style="font-family:'Orbitron',sans-serif;font-size:0.8rem;color:var(--gold);letter-spacing:0.1em;">QUESTION EDITOR</h3>
+          <button class="btn btn-gold" style="font-size:0.62rem;padding:6px 14px;" onclick="saveQuestions()">💾 SAVE QUESTIONS</button>
+        </div>
+        <div class="tabs">
+          <div class="tab-btn active" onclick="showTab('r1')">ROUND 1 — TEXT</div>
+          <div class="tab-btn" onclick="showTab('r2')">ROUND 2 — IMAGE</div>
+        </div>
+
+        <div id="tab-r1">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:0.7rem;color:rgba(200,214,229,0.35);margin-bottom:10px;">
+            Max 10 · Answer = exact hidden word (case-insensitive)
+          </div>
+          <div id="r1-qs"></div>
+          <button class="btn btn-outline" style="font-size:0.62rem;" onclick="addQ(1)" id="add-r1">+ ADD QUESTION</button>
+        </div>
+
+        <div id="tab-r2" style="display:none;">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:0.7rem;color:rgba(200,214,229,0.35);margin-bottom:10px;">
+            Images in <code>static/images/</code> · Path like <code>/static/images/r2_q1.png</code>
+          </div>
+          <div id="r2-qs"></div>
+          <button class="btn btn-outline" style="font-size:0.62rem;" onclick="addQ(2)" id="add-r2">+ ADD QUESTION</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<!-- Score override modal -->
+<div id="score-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:none;align-items:center;justify-content:center;">
+  <div class="card" style="width:340px;padding:24px;">
+    <div style="font-family:'Orbitron',sans-serif;font-size:0.8rem;color:var(--gold);margin-bottom:16px;">SCORE OVERRIDE</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:0.82rem;margin-bottom:12px;" id="modal-team-name"></div>
+    <div style="margin-bottom:10px;">
+      <label style="font-family:'Orbitron',sans-serif;font-size:0.58rem;color:var(--blue);display:block;margin-bottom:4px;">ROUND</label>
+      <select id="modal-round" style="width:100%;background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--text);font-family:'Share Tech Mono',monospace;padding:7px 10px;border-radius:3px;">
+        <option value="1">Round 1</option>
+        <option value="2">Round 2</option>
+      </select>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-family:'Orbitron',sans-serif;font-size:0.58rem;color:var(--blue);display:block;margin-bottom:4px;">NEW SCORE (0–100)</label>
+      <input type="number" id="modal-score" min="0" max="100" style="width:100%;background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--gold);font-family:'Orbitron',monospace;font-size:1rem;padding:8px 12px;border-radius:3px;text-align:center;">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-gold" style="flex:1;" onclick="applyOverride()">APPLY</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/ws.js"></script>
+<script>
+let questions = {round1:[], round2:[]};
+let state = {};
+let adminTimerInterval = null;
+let overrideTeam = null;
+
+const socket = new GameSocket(msg => {
+  if (msg.type === 'leaderboard_update') renderLB(msg.data);
+  if (msg.type === 'game_event') {
+    const e = msg.data;
+    if (e.type === 'round_started') {
+      if (e.duration) startAdminTimer(e.duration, e.start_time);
+    }
+    if (e.type === 'round_ended' || e.type === 'time_added') fetchAll();
+  }
+});
+
+async function fetchAll() {
+  const res = await fetch('/admin/state');
+  if (res.status === 403) { location.href='/admin/login'; return; }
+  const d = await res.json();
+  state = d.state;
+  questions = d.questions || {round1:[], round2:[]};
+  renderStatusUI();
+  renderQuestions();
+  renderLB(d.leaderboard);
+  renderTeams(d.leaderboard?.teams || []);
+
+  // Restore timer if active
+  if (state.round_active && state.round_start_time) {
+    const rn  = state.current_round;
+    const dur = state[`round${rn}_duration`] || 300;
+    startAdminTimer(dur, state.round_start_time);
+  } else {
+    stopAdminTimer();
+  }
+  // Restore duration inputs
+  document.getElementById('dur-r1').value = Math.round((state.round1_duration || 300) / 60);
+  document.getElementById('dur-r2').value = Math.round((state.round2_duration || 300) / 60);
+}
+
+function renderStatusUI() {
+  const r = state.current_round, active = state.round_active;
+  const badge = document.getElementById('game-badge');
+  document.getElementById('st-round').textContent = r || '—';
+  const total = Object.keys(state.teams || {}).length;
+  document.getElementById('st-teams').textContent = total;
+
+  if (r===3)        { badge.textContent='GAME ENDED'; badge.style.color='#2ed573'; }
+  else if (active)  { badge.textContent=`ROUND ${r} LIVE`; badge.style.color='var(--red)'; }
+  else              { badge.textContent='STANDBY'; badge.style.color='var(--gold)'; }
+}
+
+// ── Admin timer ────────────────────────────────────────────────────────────
+function startAdminTimer(duration, startTimeSec) {
+  if (adminTimerInterval) clearInterval(adminTimerInterval);
+  document.getElementById('admin-timer-wrap').style.display = '';
+  adminTimerInterval = setInterval(() => tickAdminTimer(duration, startTimeSec), 500);
+  tickAdminTimer(duration, startTimeSec);
+}
+
+function tickAdminTimer(dur, startSec) {
+  const elapsed   = (Date.now()/1000) - startSec;
+  const remaining = Math.max(0, dur - elapsed);
+  const pct = dur > 0 ? (remaining/dur)*100 : 0;
+  const mins = Math.floor(remaining/60);
+  const secs = Math.floor(remaining%60);
+  const display = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  const el   = document.getElementById('admin-timer');
+  const fill = document.getElementById('admin-fill');
+  if(el)   el.textContent = display;
+  if(fill) fill.style.width = pct+'%';
+  const warn = remaining <= 60;
+  el?.classList.toggle('warning', warn);
+  fill?.classList.toggle('warning', warn);
+  if (remaining <= 0) stopAdminTimer();
+}
+
+function stopAdminTimer() {
+  if (adminTimerInterval) { clearInterval(adminTimerInterval); adminTimerInterval = null; }
+  document.getElementById('admin-timer-wrap').style.display = 'none';
+}
+
+// ── Controls ───────────────────────────────────────────────────────────────
+async function control(action) {
+  let duration = null;
+  if (action === 'start_round1') duration = parseInt(document.getElementById('dur-r1').value) * 60;
+  if (action === 'start_round2') duration = parseInt(document.getElementById('dur-r2').value) * 60;
+  const res = await fetch('/admin/control', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action, duration})
+  });
+  const d = await res.json();
+  state = d.state;
+  renderStatusUI();
+  renderLB(d.leaderboard);
+  renderTeams(d.leaderboard?.teams || []);
+  toast(`✓ ${action.replace(/_/g,' ')}`);
+}
+
+// ── Leaderboard ────────────────────────────────────────────────────────────
+function renderLB(d) {
+  if (!d) return;
+  const teams = d.teams || [];
+  const medals = ['🥇','🥈','🥉'];
+
+  // Update submitted count
+  const rn = d.current_round;
+  const submitted = teams.filter(t => rn===1?t.round1_done:rn===2?t.round2_done:false).length;
+  document.getElementById('st-submitted').textContent = submitted;
+
+  const body = document.getElementById('admin-lb-body');
+  if(!teams.length){
+    body.innerHTML='<tr><td colspan="6" style="color:rgba(200,214,229,0.25);padding:16px;text-align:center;">No teams yet</td></tr>';
+    return;
+  }
+  body.innerHTML = teams.map((t,i) => {
+    const timeStr = t.round1_time && t.round2_time
+      ? `${fmtTime(t.round1_time)}+${fmtTime(t.round2_time)}`
+      : t.round1_time ? fmtTime(t.round1_time) : '—';
+    return `<tr>
+      <td style="color:${i<3?'var(--gold)':'inherit'}">${i<3?medals[i]:''}${t.rank}</td>
+      <td style="color:white;">${escHtml(t.name)}</td>
+      <td style="color:${t.round1_done?'#2ed573':'rgba(200,214,229,0.35)'};">${t.round1_done?t.round1_score:'—'}</td>
+      <td style="color:${t.round2_done?'#2ed573':'rgba(200,214,229,0.35)'};">${t.round2_done?t.round2_score:'—'}</td>
+      <td style="color:var(--gold);font-weight:700;">${t.score}</td>
+      <td style="color:rgba(200,214,229,0.4);font-size:0.7rem;">${timeStr}</td>
+    </tr>`;
+  }).join('');
+}
+
+function fmtTime(sec) {
+  if (!sec || sec >= 9999) return '—';
+  const m = Math.floor(sec/60), s = Math.round(sec%60);
+  return m > 0 ? `${m}m${s}s` : `${s}s`;
+}
+
+// ── Teams list ─────────────────────────────────────────────────────────────
+function renderTeams(teams) {
+  const list = document.getElementById('teams-list');
+  if(!teams.length){
+    list.innerHTML='<div style="font-family:\'Share Tech Mono\',monospace;font-size:0.78rem;color:rgba(200,214,229,0.25);">No teams yet</div>';
+    return;
+  }
+  list.innerHTML = teams.map(t => `
+    <div class="team-row">
+      <span class="team-name-cell">${escHtml(t.name)}</span>
+      <span class="team-badges">
+        <span class="sm-dot ${t.round1_done?'dot-g':'dot-e'}" title="Round 1"></span>
+        <span class="sm-dot ${t.round2_done?'dot-g':'dot-e'}" title="Round 2"></span>
+      </span>
+      <span class="team-score-cell">${t.score}pts</span>
+      <button class="override-btn" onclick="openOverride(${JSON.stringify(t.name)},${t.score})">✎</button>
+      <button class="del-btn" onclick="removeTeam(${JSON.stringify(t.name)})">✕</button>
+    </div>`
+  ).join('');
+}
+
+async function removeTeam(name) {
+  if(!confirm(`Remove "${name}"?`)) return;
+  await fetch('/admin/remove_team',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({team:name})});
+  fetchAll();
+}
+
+// ── Score override ─────────────────────────────────────────────────────────
+function openOverride(name, currentScore) {
+  overrideTeam = name;
+  document.getElementById('modal-team-name').textContent = `Team: ${name}  (current: ${currentScore} pts)`;
+  document.getElementById('modal-score').value = currentScore;
+  document.getElementById('score-modal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('score-modal').style.display = 'none';
+  overrideTeam = null;
+}
+
+async function applyOverride() {
+  if (!overrideTeam) return;
+  const round = parseInt(document.getElementById('modal-round').value);
+  const score = parseInt(document.getElementById('modal-score').value);
+  await fetch('/admin/update_score', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({team: overrideTeam, round, score})
+  });
+  toast('✓ Score updated');
+  closeModal(); fetchAll();
+}
+
+// ── Question editor ────────────────────────────────────────────────────────
+function renderQuestions() { renderRound(1, questions.round1||[]); renderRound(2, questions.round2||[]); }
+
+function renderRound(r, qs) {
+  const c = document.getElementById(`r${r}-qs`);
+  const addBtn = document.getElementById(`add-r${r}`);
+  c.innerHTML = '';
+  qs.forEach((q,i) => {
+    const div = document.createElement('div');
+    div.className = 'q-item';
+    if (r===1) {
+      div.innerHTML = `
+        <div class="q-item-hdr"><span class="tag tag-gold" style="font-size:0.55rem;">Q${i+1}</span>
+          <button class="del-btn" onclick="rmQ(1,${i})">✕</button></div>
+        <div class="q-field"><label>QUESTION TEXT</label>
+          <textarea class="q-ta" id="r1-text-${i}" rows="2">${escHtml(q.text||'')}</textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="q-field"><label>ANSWER (hidden word)</label>
+            <input class="q-inp" id="r1-ans-${i}" value="${escHtml(q.answer||'')}" placeholder="e.g. iron"></div>
+          <div class="q-field"><label>HINT (optional)</label>
+            <input class="q-inp" id="r1-hint-${i}" value="${escHtml(q.hint||'')}" placeholder="Hint text"></div>
+        </div>`;
+    } else {
+      div.innerHTML = `
+        <div class="q-item-hdr"><span class="tag tag-blue" style="font-size:0.55rem;">Q${i+1}</span>
+          <button class="del-btn" onclick="rmQ(2,${i})">✕</button></div>
+        <div class="q-field"><label>IMAGE PATH</label>
+          <input class="q-inp" id="r2-img-${i}" value="${escHtml(q.image_url||`/static/images/r2_q${i+1}.png`)}"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="q-field"><label>ANSWER (hidden word)</label>
+            <input class="q-inp" id="r2-ans-${i}" value="${escHtml(q.answer||'')}" placeholder="e.g. arc"></div>
+          <div class="q-field"><label>HINT</label>
+            <input class="q-inp" id="r2-hint-${i}" value="${escHtml(q.hint||'')}" placeholder="What to look for"></div>
+        </div>`;
+    }
+    c.appendChild(div);
+  });
+  addBtn.style.display = qs.length >= 10 ? 'none' : 'inline-block';
+}
+
+function addQ(r) {
+  const arr = questions[`round${r}`];
+  if (arr.length >= 10) { alert('Max 10 questions per round'); return; }
+  if (r===1) arr.push({text:'',answer:'',hint:''});
+  else arr.push({image_url:`/static/images/r2_q${arr.length+1}.png`,answer:'',hint:''});
+  renderRound(r, arr);
+}
+
+function rmQ(r, i) {
+  questions[`round${r}`].splice(i,1);
+  renderRound(r, questions[`round${r}`]);
+}
+
+function collectQs() {
+  const r1=[], r2=[];
+  (questions.round1||[]).forEach((_,i) => r1.push({
+    text:   document.getElementById(`r1-text-${i}`)?.value||'',
+    answer: (document.getElementById(`r1-ans-${i}`)?.value||'').toLowerCase().trim(),
+    hint:   document.getElementById(`r1-hint-${i}`)?.value||''
+  }));
+  (questions.round2||[]).forEach((_,i) => r2.push({
+    image_url: document.getElementById(`r2-img-${i}`)?.value||'',
+    answer:    (document.getElementById(`r2-ans-${i}`)?.value||'').toLowerCase().trim(),
+    hint:      document.getElementById(`r2-hint-${i}`)?.value||''
+  }));
+  return {round1:r1, round2:r2};
+}
+
+async function saveQuestions() {
+  const q = collectQs();
+  const r = await fetch('/admin/questions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(q)});
+  const d = await r.json();
+  if(d.ok) toast('✓ Questions saved');
+}
+
+function showTab(tab) {
+  document.getElementById('tab-r1').style.display = tab==='r1'?'':'none';
+  document.getElementById('tab-r2').style.display = tab==='r2'?'':'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>
+    b.classList.toggle('active',(i===0&&tab==='r1')||(i===1&&tab==='r2')));
+}
+
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.style.opacity='1';
+  setTimeout(()=>el.style.opacity='0', 2500);
+}
+
+function escHtml(t) {
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modal on backdrop click
+document.getElementById('score-modal').addEventListener('click', e => {
+  if(e.target===e.currentTarget) closeModal();
+});
+
+setInterval(fetchAll, 10000);
+fetchAll();
+</script>
+{% endblock %}

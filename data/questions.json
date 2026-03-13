@@ -1,0 +1,106 @@
+{
+  "round1": [
+    {
+      "text": "@@#%&*!^~##$$(S)$$##%$&*!^~##$$(C)$$##%$&*!^~\n!!<<>>[[$$((R))$$]]<<>>!![[$$E)$$]]<<>>!!\n==/\\/\\/\\/*&^%$#@!^~*&^%$#@/\\/\\E)/\\/\\/\\/\\/\\/==/\\/\\/\\/\\/\\/N/\\/\\/\\/\\/\\/==%$#@!",
+      "answer": "screen",
+      "hint": "The glass part of your laptop or phone where you see the pictures."
+    },
+    {
+      "text": "~~**[[(*&^%$#@!^~*&^%$#@(B*&^%$#@!^~*&^%$#@))]]**~~//**[[((@))]]**//--**[[((T))]]**--\n++**[[((T))]]**++&&**[[((E))]]**&&==**[[((R))]]**==\n!!**[[((Y))]]**!!%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^",
+      "answer": "battery",
+      "hint": "This provides the power so your phone doesn't die."
+    },
+    {
+      "text": "^~^~{{*&^%$#@!^~*&^%$#@[[M*&^%$#@!^~*&^%$#@]]}}~^~^~{{[[3]]}}~^~^~{{[*&^%$#@!^~*&^%$#@[S]]}}~^~^\\*&^%$#@!^~*&^%$#@n~^~^~{{[[S]]}}~^~^~{{[[@]]}}~^~^~{{[[G]]}}~^~^~\n~^~^~{{[[3]]}}~^~^~%$#@!^~*&^%$#@!^~*&^%$#@!^~",
+      "answer": "message",
+      "hint": "What you send to a friend on WhatsApp or Instagram."
+    },
+    {
+      "text": "||--**W]--||====@#-#I]]--||---/???**&^%$#@!^~*&^%$#@F]]--||\n||--[[**I**]]--||%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^\n||--[[****]]--||--[[****]]--||--[[****]]--||",
+      "answer": "wifi",
+      "hint": "The invisible signal that gives you free internet at college."
+    },
+    {
+      "text": "//\\\\//\\\\H//\\\\//\\\\[[@]]//\\\\//\\\\K]//\\\\//\\\\\n//\\\\//\\\\[[3]]//\\\\//\\\\[[R]]//\\\\//\\\\%$#@!^~*&^%$\n//\\\\//\\\\S//\\\\//\\\\[[**]]//\\\\//\\\\[[**]]//\\\\//\\\\",
+      "answer": "hackers",
+      "hint": "People who try to break into computers or steal passwords."
+    },
+    {
+      "text": "**((C))**++((0))++--((0))--$$((G))$$&&((L))&&##((E))##\n!!%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^%$#@!^~\n<<>>((**))<<>>((**))<<>>((**))<<>>((**))<<>>((**))",
+      "answer": "google",
+      "hint": "The most famous search engine used to find information."
+    },
+    {
+      "text": "<<>>[[**P**]]<<>>[[**I**]]<<>>[[**X**]]<<>>[[**E**]]<<>>\n[[**L**]]<<>>[[**$**]]<<>>!!%$#@!^~*&^%$#@!^~*&^\n!!%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^%$#@!^~",
+      "answer": "pixels",
+      "hint": "The tiny little dots that make up an image on a screen."
+    },
+    {
+      "text": "~_~_[[F]]_~_~_[[0]]_~_~_[[L]]_~_~_[[D]]_~_~_[[3]]_~_~\n_~_~_[[R]]_~_~%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^%$#@!\n~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_",
+      "answer": "folder",
+      "hint": "Where you store your files and documents on a computer."
+    },
+    {
+      "text": "!!{{V}}!!{{1}}!!{{R}}!!{{U}}!!{{$}}\n!!%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^%$#@!^~\n!!{{**}}!!{{**}}!!{{**}}!!{{**}}!!{{**}}!!{{**}}!!",
+      "answer": "virus",
+      "hint": "A bad program that can make your computer sick or slow."
+    },
+    {
+      "text": "@@#%&*!^~[[**U**]]<<>>[[**P**]]//\\_/\\ [[**D**]]||[[**@**]]||\n[[**T**]]/\\_/\\ [[**3**]]// %$#@!^~*&^%$#@!^~*&^%$#@!\n**%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^%$#@!^~*&^%$#@!^~",
+      "answer": "update",
+      "hint": "When your apps download new files to get better features."
+    }
+  ],
+  "round2": [
+    {
+      "image_url": "/static/images/r2_q1.png",
+      "answer": "ai odyssey",
+      "hint": "Jarvis forum related"
+    },
+    {
+      "image_url": "/static/images/r2_q2.png",
+      "answer": "beeja",
+      "hint": "Instant energy"
+    },
+    {
+      "image_url": "/static/images/r2_q3.png",
+      "answer": "imac",
+      "hint": "Wallpaper"
+    },
+    {
+      "image_url": "/static/images/r2_q4.png",
+      "answer": "air",
+      "hint": "Thinnest iPad segment"
+    },
+    {
+      "image_url": "/static/images/r2_q5.png",
+      "answer": "mini",
+      "hint": "Smallest iPad"
+    },
+    {
+      "image_url": "/static/images/r2_q6.png",
+      "answer": "pro",
+      "hint": "Top segment of Apple"
+    },
+    {
+      "image_url": "/static/images/r2_q7.png",
+      "answer": "jarvis",
+      "hint": "Iron-man related"
+    },
+    {
+      "image_url": "/static/images/r2_q8.png",
+      "answer": "air",
+      "hint": "Both comes in iPad and MacBook"
+    },
+    {
+      "image_url": "/static/images/r2_q9.png",
+      "answer": "pro",
+      "hint": "Professional segment"
+    },
+    {
+      "image_url": "/static/images/r2_q10.png",
+      "answer": "rocket raccoon",
+      "hint": "Marvel character"
+    }
+  ]
+}

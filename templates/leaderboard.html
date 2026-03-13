@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard — Hunt the Hint{% endblock %}
+
+{% block nav_right %}
+<a href="/game" class="btn btn-ghost">Back to Game</a>
+{% endblock %}
+
+{% block extra_style %}
+.lb-wrap { max-width:760px; margin:0 auto; padding:32px 20px; }
+.lb-title { font-family:'Orbitron',sans-serif;font-size:1.6rem;font-weight:900;color:var(--gold);text-shadow:var(--glow-gold);letter-spacing:0.1em; }
+.lb-sub { font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:rgba(200,214,229,0.4);margin-top:8px; }
+.lb-table { width:100%;border-collapse:collapse; }
+.lb-table th { font-family:'Orbitron',sans-serif;font-size:0.6rem;letter-spacing:0.2em;
+  color:rgba(200,214,229,0.4);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border); }
+.lb-table td { padding:12px 14px;border-bottom:1px solid rgba(26,58,110,0.4);
+  font-family:'Share Tech Mono',monospace;font-size:0.85rem;transition:background 0.2s; }
+.lb-table tr:hover td { background:rgba(0,180,216,0.04); }
+.rank-1 { color:var(--gold);font-weight:700;font-size:1rem; }
+.rank-2 { color:#c0c0c0; } .rank-3 { color:#cd7f32; }
+.rank-num { font-family:'Orbitron',sans-serif;font-size:0.8rem; }
+.score-cell { color:var(--gold);font-weight:700; }
+.round-score { color:rgba(200,214,229,0.5);font-size:0.75rem; }
+.done-dot { display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px; }
+.dot-green { background:#2ed573;box-shadow:0 0 5px #2ed573; } .dot-grey { background:rgba(200,214,229,0.2); }
+.top3-medal { font-size:1.2rem;margin-right:6px; }
+.empty-state { text-align:center;padding:60px 20px;font-family:'Share Tech Mono',monospace;color:rgba(200,214,229,0.3);font-size:0.85rem; }
+.live-badge { display:inline-flex;align-items:center;gap:6px;font-family:'Orbitron',sans-serif;
+  font-size:0.6rem;letter-spacing:0.15em;color:var(--red);padding:4px 10px;
+  border:1px solid rgba(230,57,70,0.4);border-radius:2px; }
+.live-dot { width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse-dot 1s infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+.round-status { display:flex;gap:12px;justify-content:center;margin-bottom:24px;flex-wrap:wrap; }
+{% endblock %}
+
+{% block content %}
+<div class="lb-wrap">
+  <div style="text-align:center;margin-bottom:32px;">
+    <div class="lb-title">⚡ RANKINGS</div>
+    <div class="lb-sub">Real-time leaderboard — updates automatically</div>
+    <div style="margin-top:12px;"><span class="live-badge"><span class="live-dot"></span> LIVE</span></div>
+  </div>
+  <div class="round-status" id="round-status"></div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="lb-table">
+      <thead>
+        <tr>
+          <th>RANK</th><th>TEAM</th><th>R1 PTS</th><th>R2 PTS</th><th>TOTAL</th><th>SUBMIT TIME</th>
+        </tr>
+      </thead>
+      <tbody id="lb-body">
+        <tr><td colspan="6" class="empty-state">Waiting for teams to register...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/ws.js"></script>
+<script>
+const socket = new GameSocket(onWsMessage);
+
+function onWsMessage(msg) {
+  if (msg.type === 'leaderboard_update') updateTable(msg.data);
+}
+
+async function fetchLB() {
+  const res = await fetch('/leaderboard/data');
+  updateTable(await res.json());
+}
+
+function fmtTime(sec) {
+  if (!sec || sec >= 9999999) return '—';
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+function updateTable(d) {
+  const teams = d.teams || [];
+  const rs = document.getElementById('round-status');
+  const r = d.current_round, active = d.round_active;
+  rs.innerHTML = `
+    <span class="tag ${r > 1 ? 'tag-green' : (r===1&&active?'tag-red':'tag-gold')}">Round 1: ${r>1?'DONE':r===1&&active?'ACTIVE':'WAITING'}</span>
+    <span class="tag ${r > 2 ? 'tag-green' : (r===2&&active?'tag-red':'tag-gold')}">Round 2: ${r>2?'DONE':r===2&&active?'ACTIVE':'WAITING'}</span>
+    <span class="tag ${r===3?'tag-green':'tag-blue'}">${r===3?'GAME OVER':'IN PROGRESS'}</span>`;
+
+  const body = document.getElementById('lb-body');
+  if (!teams.length) { body.innerHTML='<tr><td colspan="6" class="empty-state">No teams yet...</td></tr>'; return; }
+  const medals = ['🥇','🥈','🥉'];
+  body.innerHTML = teams.map((t,i) => {
+    const timeStr = (t.round1_time || t.round2_time)
+      ? [t.round1_time ? `R1:${fmtTime(t.round1_time)}` : null, t.round2_time ? `R2:${fmtTime(t.round2_time)}` : null]
+          .filter(Boolean).join(' ')
+      : '—';
+    return `<tr>
+      <td><span class="rank-num ${i<3?'rank-'+(i+1):''}">${i<3?medals[i]:''}${t.rank}</span></td>
+      <td><span style="color:white;">${escHtml(t.name)}</span></td>
+      <td><span class="round-score" style="color:${t.round1_done?'#2ed573':'inherit'}">${t.round1_done?t.round1_score:'—'}</span></td>
+      <td><span class="round-score" style="color:${t.round2_done?'#2ed573':'inherit'}">${t.round2_done?t.round2_score:'—'}</span></td>
+      <td><span class="score-cell">${t.score} pts</span></td>
+      <td><span style="font-size:0.72rem;color:rgba(200,214,229,0.45);">${timeStr}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function escHtml(t) {
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+setInterval(fetchLB, 5000);
+fetchLB();
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Admin Login — Hunt the Hint{% endblock %}
+{% block nav_right %}{% endblock %}
+
+{% block extra_style %}
+.login-wrap { min-height:calc(100vh - 60px);display:flex;align-items:center;justify-content:center;padding:40px 20px; }
+.login-box { width:100%;max-width:380px; }
+.admin-icon { width:70px;height:70px;border-radius:50%;border:2px solid var(--gold);margin:0 auto 24px;
+  display:flex;align-items:center;justify-content:center;font-size:1.8rem;box-shadow:var(--glow-gold); }
+{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+  <div class="login-box">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div class="admin-icon">🛡️</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:0.6rem;letter-spacing:0.3em;color:var(--gold);margin-bottom:6px;">ADMIN ACCESS</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.4rem;font-weight:900;color:white;">COMMAND CENTER</div>
+    </div>
+    <div class="card card-glow-gold">
+      <div id="msg"></div>
+      <div style="margin-bottom:16px;">
+        <label style="font-family:'Orbitron',sans-serif;font-size:0.65rem;letter-spacing:0.15em;color:var(--gold);display:block;margin-bottom:8px;">ACCESS CODE</label>
+        <input type="password" id="pwd" placeholder="Enter admin password..." />
+      </div>
+      <button class="btn btn-gold" style="width:100%;font-size:0.8rem;padding:12px;" onclick="login()">
+        INITIALIZE COMMAND
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('pwd').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
+async function login() {
+  const pwd = document.getElementById('pwd').value;
+  const btn = document.querySelector('.btn-gold');
+  btn.textContent = 'VERIFYING...'; btn.disabled = true;
+  try {
+    const res = await fetch('/admin/login', {
+      method: 'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({password: pwd})
+    });
+    if (res.ok) { window.location.href = '/admin'; }
+    else {
+      document.getElementById('msg').innerHTML = '<div class="flash flash-error">Access denied. Invalid credentials.</div>';
+      btn.textContent = 'INITIALIZE COMMAND'; btn.disabled = false;
+    }
+  } catch(e) {
+    document.getElementById('msg').innerHTML = '<div class="flash flash-error">Connection error.</div>';
+    btn.textContent = 'INITIALIZE COMMAND'; btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}
